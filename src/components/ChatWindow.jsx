@@ -1,54 +1,29 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FiSend, FiTrash2 } from 'react-icons/fi';
 import ChatMessage from './ChatMessage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
-import { projects, suggestedQueries, teams, members } from '../data/dataset.js';
-
-const starterMessages = [
-  {
-    id: 1,
-    role: 'assistant',
-    text: 'Hi, I can search team, project, member, role, and status information from the CSV knowledge base.',
-  },
-];
-
-function buildResponse(query) {
-  const normalized = query.toLowerCase();
-
-  if (normalized.includes('team')) {
-    return `Found ${teams.length} teams. ${teams[0].name} owns ${teams[0].projectCount} projects with ${teams[0].memberCount} members.`;
-  }
-
-  if (normalized.includes('project')) {
-    return `There are ${projects.length} projects. Ongoing work includes ${projects.filter((project) => project.status === 'Ongoing').map((project) => project.name).join(', ')}.`;
-  }
-
-  if (normalized.includes('member')) {
-    return `The knowledge base has ${members.length} members. Example: ${members[0].name} is a ${members[0].role} on ${members[0].projectName}.`;
-  }
-
-  if (normalized.includes('role')) {
-    return `Roles include ${[...new Set(members.map((member) => member.role))].slice(0, 5).join(', ')}.`;
-  }
-
-  if (normalized.includes('status')) {
-    const statusSummary = projects.reduce((summary, project) => {
-      summary[project.status] = (summary[project.status] ?? 0) + 1;
-      return summary;
-    }, {});
-
-    return `Project statuses currently include ${Object.entries(statusSummary)
-      .map(([status, count]) => `${status} (${count})`)
-      .join(', ')}.`;
-  }
-
-  return 'I searched the CSV dataset and found related knowledge across teams, members, and projects. Try asking for a team, member, role, project, or status.';
-}
+import { useDataset } from '../data/DatasetContext.jsx';
+import { answerQuestion } from '../data/dataset.js';
 
 export default function ChatWindow() {
+  const { dataset } = useDataset();
+  const starterMessages = useMemo(
+    () => [
+      {
+        id: 1,
+        role: 'assistant',
+        text: `Hi, I analyzed ${dataset.fileName}. Ask about counts, averages, highest values, categories, or any row detail from the uploaded dataset.`,
+      },
+    ],
+    [dataset.fileName]
+  );
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    setMessages(starterMessages);
+  }, [starterMessages]);
 
   const history = useMemo(() => messages.filter((message) => message.role === 'user'), [messages]);
 
@@ -64,10 +39,10 @@ export default function ChatWindow() {
     window.setTimeout(() => {
       setMessages((current) => [
         ...current,
-        { id: Date.now() + 1, role: 'assistant', text: buildResponse(trimmed) },
+        { id: Date.now() + 1, role: 'assistant', text: answerQuestion(dataset, trimmed) },
       ]);
       setIsTyping(false);
-    }, 700);
+    }, 500);
   };
 
   return (
@@ -105,7 +80,7 @@ export default function ChatWindow() {
       <section className="flex min-h-[680px] flex-col rounded-2xl border border-slate-100 bg-slate-50 shadow-soft">
         <div className="border-b border-slate-200 bg-white px-5 py-4">
           <h1 className="text-xl font-bold text-ink">Ask AI</h1>
-          <p className="mt-1 text-sm text-slate-500">RAG assistant for team knowledge retrieval from the CSV dataset.</p>
+          <p className="mt-1 text-sm text-slate-500">Schema-aware retrieval over {dataset.rows.length.toLocaleString()} records from {dataset.fileName}.</p>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
@@ -115,14 +90,14 @@ export default function ChatWindow() {
           {isTyping ? (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <LoadingSpinner />
-              Assistant is searching the knowledge base
+              Assistant is retrieving relevant records
             </div>
           ) : null}
         </div>
 
         <div className="border-t border-slate-200 bg-white p-4">
           <div className="mb-3 flex flex-wrap gap-2">
-            {suggestedQueries.map((query) => (
+            {dataset.metadata.possibleQuestions.map((query) => (
               <button
                 key={query}
                 type="button"
@@ -143,7 +118,7 @@ export default function ChatWindow() {
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask about a team, project, member, role, or status"
+              placeholder="Ask anything about the uploaded dataset"
               className="focus-ring h-12 min-w-0 flex-1 rounded-xl border border-slate-200 px-4 text-sm shadow-sm"
             />
             <button

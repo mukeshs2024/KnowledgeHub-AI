@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { FiBarChart2, FiHome, FiMessageSquare, FiSettings, FiUsers, FiX, FiBriefcase, FiUserCheck } from 'react-icons/fi';
+import { FiBarChart2, FiDatabase, FiFileText, FiHome, FiMessageSquare, FiSettings, FiX } from 'react-icons/fi';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: FiHome },
   { to: '/ask-ai', label: 'Ask AI', icon: FiMessageSquare },
-  { to: '/teams', label: 'Teams', icon: FiUsers },
-  { to: '/members', label: 'Members', icon: FiUserCheck },
-  { to: '/projects', label: 'Projects', icon: FiBriefcase },
+  { to: '/teams', label: 'Schema', icon: FiDatabase },
+  { to: '/members', label: 'Records', icon: FiFileText },
+  { to: '/projects', label: 'Documents', icon: FiFileText },
   { to: '/analytics', label: 'Analytics', icon: FiBarChart2 },
   { to: '/settings', label: 'Settings', icon: FiSettings },
 ];
@@ -16,9 +16,9 @@ export default function Sidebar({ isOpen, onClose }) {
     <aside className="flex h-full flex-col border-r border-slate-200 bg-white px-4 py-5">
       <div className="flex items-center justify-between gap-3 px-2">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-600 text-lg font-black text-white">TK</span>
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-600 text-lg font-black text-white">UK</span>
           <div>
-            <p className="text-sm font-bold text-ink">Team Knowledge</p>
+            <p className="text-sm font-bold text-ink">Universal Knowledge</p>
             <p className="text-xs text-slate-500">Assistant</p>
           </div>
         </div>
@@ -47,8 +47,8 @@ export default function Sidebar({ isOpen, onClose }) {
       </nav>
 
       <div className="mt-auto rounded-2xl bg-slate-50 p-4">
-        <p className="text-sm font-semibold text-ink">CSV RAG System</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">Team knowledge powered by the project dataset.</p>
+        <p className="text-sm font-semibold text-ink">Dynamic RAG System</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">CSV, Excel, and JSON knowledge with schema-aware retrieval.</p>
       </div>
     </aside>
   );

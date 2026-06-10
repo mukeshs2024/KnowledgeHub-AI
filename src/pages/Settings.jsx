@@ -5,7 +5,7 @@ export default function Settings() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-ink">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">Profile, theme, and API key interface only.</p>
+        <p className="mt-1 text-sm text-slate-500">Profile, theme, and model key interface only.</p>
       </div>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
@@ -22,11 +22,11 @@ export default function Settings() {
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 text-sm font-medium text-slate-700">
               Name
-              <input defaultValue="Naveen Kumar" className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal shadow-sm" />
+              <input defaultValue="Knowledge Admin" className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal shadow-sm" />
             </label>
             <label className="space-y-2 text-sm font-medium text-slate-700">
               Role
-              <input defaultValue="Knowledge Admin" className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal shadow-sm" />
+              <input defaultValue="Dataset Analyst" className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal shadow-sm" />
             </label>
           </div>
         </div>
@@ -52,12 +52,12 @@ export default function Settings() {
             <FiKey />
           </span>
           <div>
-            <h2 className="font-bold text-ink">API Key</h2>
-            <p className="text-sm text-slate-500">Frontend-only input. No key is submitted.</p>
+            <h2 className="font-bold text-ink">Gemini API Key</h2>
+            <p className="text-sm text-slate-500">Frontend-only input. No key is submitted from this demo.</p>
           </div>
         </div>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <input type="password" defaultValue="dataset-api-key-placeholder" className="focus-ring h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm shadow-sm" />
+          <input type="password" defaultValue="gemini-api-key-placeholder" className="focus-ring h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm shadow-sm" />
           <button type="button" className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700">
             <FiSave />
             Save
