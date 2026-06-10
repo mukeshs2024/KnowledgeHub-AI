@@ -1,13 +1,21 @@
 import { useParams } from 'react-router-dom';
-import { members, projects } from '../data/dataset.js';
+import { useDataset } from '../data/DatasetContext.jsx';
+import { deriveDatasetEntities } from '../data/dataset.js';
 import { DetailCard, DetailPage, InfoRow, StatusBadge, TagList } from '../components/DetailLayout.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 
 export default function ProjectDetail() {
+  const { activeDataset } = useDataset();
   const { projectId } = useParams();
+
+  if (!activeDataset) {
+    return <EmptyState title="No Dataset Uploaded" message="Upload a dataset to view project details." />;
+  }
+
+  const { members, projects } = deriveDatasetEntities(activeDataset);
   const project = projects.find((p) => p.id === projectId);
 
-  if (!project) return <EmptyState title="Project not found" />;
+  if (!project) return <EmptyState title="Project not found" message="No matching project was found in the uploaded dataset." />;
 
   const projectMembers = members.filter((m) => m.teamId === projectId);
 
@@ -41,13 +49,21 @@ export default function ProjectDetail() {
         <DetailCard title={`Team Members (${projectMembers.length})`}>
           <div className="divide-y divide-slate-100">
             {projectMembers.map((m) => (
-              <div key={m.id} className="flex flex-col gap-0.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <a
+                key={m.id}
+                href={`/members/${m.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = `/members/${m.id}`;
+                }}
+                className="flex flex-col gap-0.5 py-3 sm:flex-row sm:items-center sm:justify-between transition hover:bg-slate-50 -mx-4 px-4"
+              >
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{m.name}</p>
+                  <p className="text-sm font-semibold text-blue-600 hover:text-blue-700">{m.name}</p>
                   <p className="text-xs text-slate-500">{m.role}</p>
                 </div>
                 <p className="text-xs text-slate-400 sm:text-right max-w-xs truncate">{m.responsibilities}</p>
-              </div>
+              </a>
             ))}
           </div>
         </DetailCard>

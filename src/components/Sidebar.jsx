@@ -1,17 +1,22 @@
 import { NavLink } from 'react-router-dom';
-import { FiBarChart2, FiDatabase, FiFileText, FiHome, FiMessageCircle, FiMessageSquare, FiSettings, FiX } from 'react-icons/fi';
-
-const links = [
-  { to: '/', label: 'Dashboard', icon: FiHome },
-  { to: '/ask-ai', label: 'Ask AI', icon: FiMessageSquare },
-  { to: '/teams', label: 'Schema', icon: FiDatabase },
-  { to: '/members', label: 'Records', icon: FiFileText },
-  { to: '/projects', label: 'Documents', icon: FiFileText },
-  { to: '/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { to: '/feedback', label: 'Feedback', icon: FiMessageCircle },
-];
+import { FiDatabase, FiFileText, FiHome, FiMessageSquare, FiX } from 'react-icons/fi';
+import { useDataset } from '../data/DatasetContext.jsx';
 
 export default function Sidebar({ isOpen, onClose }) {
+  const { activeDataset } = useDataset();
+
+  const links = [
+    { to: '/', label: 'Dashboard', icon: FiHome },
+    ...(activeDataset
+      ? [
+          { to: '/ask-ai', label: 'Ask AI', icon: FiMessageSquare },
+          { to: '/teams', label: 'Details', icon: FiDatabase },
+          { to: '/projects', label: 'Documents', icon: FiFileText },
+        ]
+      : []),
+    
+  ];
+
   const panel = (
     <aside className="flex h-full flex-col border-r border-slate-200 bg-white px-4 py-5">
       <div className="flex items-center justify-between gap-3 px-2">
@@ -47,8 +52,8 @@ export default function Sidebar({ isOpen, onClose }) {
       </nav>
 
       <div className="mt-auto rounded-2xl bg-slate-50 p-4">
-        <p className="text-sm font-semibold text-ink">Dynamic RAG System</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">CSV, Excel, and JSON knowledge with schema-aware retrieval.</p>
+        <p className="text-sm font-semibold text-ink">KnowledgeHub AI</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">Team and project intelligence from your uploaded dataset.</p>
       </div>
     </aside>
   );

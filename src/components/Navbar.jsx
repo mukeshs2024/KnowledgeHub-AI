@@ -10,7 +10,7 @@ export default function Navbar({ onMenuClick }) {
           </button>
           <div>
             <p className="text-sm text-slate-500">Workspace</p>
-          <h1 className="text-base font-bold text-ink sm:text-lg">Universal AI Knowledge Assistant</h1>
+          <h1 className="text-base font-bold text-ink sm:text-lg">KnowledgeHub AI: Team & Project Intelligence Assistant</h1>
           </div>
         </div>
 

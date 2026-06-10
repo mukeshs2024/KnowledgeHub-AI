@@ -9,6 +9,13 @@ export default function ChatMessage({ message }) {
         }`}
       >
         {message.text}
+        {!isUser && message.meta ? (
+          <div className="mt-3 space-y-1 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            {message.meta.agent ? <div>Agent Used: {message.meta.agent}</div> : null}
+            {message.meta.sources ? <div>Sources Used: {message.meta.sources}</div> : null}
+            {message.meta.confidence ? <div>Confidence Level: {message.meta.confidence}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

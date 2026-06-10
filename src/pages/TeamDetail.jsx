@@ -1,13 +1,21 @@
 import { useParams } from 'react-router-dom';
-import { members, projects, teams } from '../data/dataset.js';
+import { useDataset } from '../data/DatasetContext.jsx';
+import { deriveDatasetEntities } from '../data/dataset.js';
 import { DetailCard, DetailPage, InfoRow, StatusBadge, TagList } from '../components/DetailLayout.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 
 export default function TeamDetail() {
+  const { activeDataset } = useDataset();
   const { teamId } = useParams();
+
+  if (!activeDataset) {
+    return <EmptyState title="No Dataset Uploaded" message="Upload a dataset to view team details." />;
+  }
+
+  const { members, projects, teams } = deriveDatasetEntities(activeDataset);
   const team = teams.find((t) => t.id === teamId);
 
-  if (!team) return <EmptyState title="Team not found" />;
+  if (!team) return <EmptyState title="Team not found" message="No matching team was found in the uploaded dataset." />;
 
   const project = projects.find((p) => p.id === teamId);
   const teamMembers = members.filter((m) => m.teamId === teamId);
@@ -45,13 +53,23 @@ export default function TeamDetail() {
         <DetailCard title={`Members (${teamMembers.length})`}>
           <div className="divide-y divide-slate-100">
             {teamMembers.map((m) => (
-              <div key={m.id} className="flex flex-col gap-0.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{m.name}</p>
-                  <p className="text-xs text-slate-500">{m.role}</p>
+              <a
+                key={m.id}
+                href={`/members/${m.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = `/members/${m.id}`;
+                }}
+                className="block rounded-lg px-2 py-3 transition hover:bg-slate-50 hover:text-brand-700"
+              >
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{m.name}</p>
+                    <p className="text-xs text-slate-500">{m.role}</p>
+                  </div>
+                  <span className="text-xs text-slate-400">{m.id}</span>
                 </div>
-                <span className="text-xs text-slate-400">{m.id}</span>
-              </div>
+              </a>
             ))}
           </div>
         </DetailCard>

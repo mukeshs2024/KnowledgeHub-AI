@@ -1,15 +1,33 @@
 import { useParams } from 'react-router-dom';
-import { members, projects } from '../data/dataset.js';
+import { useDataset } from '../data/DatasetContext.jsx';
+import { deriveDatasetEntities } from '../data/dataset.js';
 import { DetailCard, DetailPage, InfoRow, StatusBadge, TagList } from '../components/DetailLayout.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 
 export default function MemberDetail() {
+  const { activeDataset } = useDataset();
   const { memberId } = useParams();
-  const member = members.find((m) => m.id === memberId);
 
-  if (!member) return <EmptyState title="Member not found" />;
+  if (!activeDataset || !activeDataset.rows) {
+    return <EmptyState title="No Dataset Uploaded" message="Upload a dataset on Dashboard to view member details." />;
+  }
 
-  const project = projects.find((p) => p.id === member.teamId);
+  let member = null;
+  let project = null;
+  
+  try {
+    const { members, projects } = deriveDatasetEntities(activeDataset);
+    member = members.find((m) => m.id === memberId);
+    if (member) {
+      project = projects.find((p) => p.id === member.teamId);
+    }
+  } catch (err) {
+    console.error('Error deriving entities:', err);
+  }
+
+  if (!member) {
+    return <EmptyState title="Member not found" message={`No member with ID "${memberId}" found. Make sure you uploaded the correct dataset and the member exists.`} />;
+  }
 
   return (
     <DetailPage title={member.name} subtitle={`${member.role} · ${member.teamName}`}>

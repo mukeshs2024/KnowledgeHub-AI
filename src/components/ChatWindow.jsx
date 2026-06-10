@@ -4,18 +4,22 @@ import ChatMessage from './ChatMessage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
 import { answerQuestion } from '../data/dataset.js';
+import { buildPrompt, callGemini } from '../lib/gemini.js';
 
 export default function ChatWindow() {
-  const { dataset } = useDataset();
+  const { activeDataset } = useDataset();
   const starterMessages = useMemo(
-    () => [
-      {
-        id: 1,
-        role: 'assistant',
-        text: `Hi, I analyzed ${dataset.fileName}. Ask about counts, averages, highest values, categories, or any row detail from the uploaded dataset.`,
-      },
-    ],
-    [dataset.fileName]
+    () =>
+      activeDataset
+        ? [
+            {
+              id: 1,
+              role: 'assistant',
+              text: `Hi, I analyzed ${activeDataset.fileName}. Ask about counts, averages, highest values, categories, or row-level detail from the uploaded dataset.`,
+            },
+          ]
+        : [],
+    [activeDataset]
   );
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
@@ -29,22 +33,66 @@ export default function ChatWindow() {
 
   const submitMessage = (text) => {
     const trimmed = text.trim();
-    if (!trimmed || isTyping) return;
+    if (!trimmed || isTyping || !activeDataset) return;
 
     const userMessage = { id: Date.now(), role: 'user', text: trimmed };
     setMessages((current) => [...current, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    window.setTimeout(() => {
-      const response = buildResponse(trimmed);
-      setMessages((current) => [
-        ...current,
-        { id: Date.now() + 1, role: 'assistant', text: answerQuestion(dataset, trimmed) },
-      ]);
-      setIsTyping(false);
-    }, 500);
+    (async () => {
+      try {
+        // simple retrieval: score documents by token overlap
+        const qtokens = String(trimmed).toLowerCase().match(/[a-z0-9]+/g) ?? [];
+        const scored = activeDataset.documents
+          .map((doc) => {
+            const text = `${doc.text} ${Object.values(doc.metadata).join(' ')}`.toLowerCase();
+            const score = qtokens.reduce((s, t) => s + (text.includes(t) ? 1 : 0), 0);
+            return { doc, score };
+          })
+          .filter((d) => d.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5)
+          .map((d) => d.doc);
+
+        const { prompt } = buildPrompt(activeDataset, trimmed, scored);
+        let llmText;
+        try {
+          llmText = await callGemini(prompt, { maxTokens: 512, temperature: 0.0 });
+        } catch (err) {
+          // Fall back to local heuristic responder
+          const response = answerQuestion(activeDataset, trimmed);
+          llmText = `${response.text}\n\nSource: ${response.sources ?? 'Dataset'}`;
+        }
+
+        setMessages((current) => [
+          ...current,
+          {
+            id: Date.now() + 1,
+            role: 'assistant',
+            text: llmText,
+            meta: {
+              agent: 'Gemini',
+              sources: scored.length ? `Retrieved ${scored.length} rows` : 'Dataset',
+              confidence: scored.length ? 'High' : 'Low',
+            },
+          },
+        ]);
+      } finally {
+        setIsTyping(false);
+      }
+    })();
   };
+
+  if (!activeDataset) {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-white p-10 shadow-soft">
+        <h1 className="text-2xl font-bold text-ink">Ask AI</h1>
+        <p className="mt-3 text-sm text-slate-500">Upload a dataset to start asking questions.</p>
+        <p className="mt-4 text-sm text-slate-600">Supported formats: CSV, XLSX, JSON.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-h-[680px] gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -81,7 +129,7 @@ export default function ChatWindow() {
       <section className="flex min-h-[680px] flex-col rounded-2xl border border-slate-100 bg-slate-50 shadow-soft">
         <div className="border-b border-slate-200 bg-white px-5 py-4">
           <h1 className="text-xl font-bold text-ink">Ask AI</h1>
-          <p className="mt-1 text-sm text-slate-500">Schema-aware retrieval over {dataset.rows.length.toLocaleString()} records from {dataset.fileName}.</p>
+          <p className="mt-1 text-sm text-slate-500">Schema-aware retrieval over {activeDataset.rows.length.toLocaleString()} records from {activeDataset.fileName}.</p>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
@@ -98,7 +146,7 @@ export default function ChatWindow() {
 
         <div className="border-t border-slate-200 bg-white p-4">
           <div className="mb-3 flex flex-wrap gap-2">
-            {dataset.metadata.possibleQuestions.map((query) => (
+            {activeDataset.metadata.possibleQuestions.map((query) => (
               <button
                 key={query}
                 type="button"

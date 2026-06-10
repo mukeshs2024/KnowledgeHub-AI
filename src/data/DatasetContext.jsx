@@ -1,18 +1,40 @@
-import { createContext, useContext, useMemo, useState } from 'react';
-import { defaultDataset } from './dataset.js';
+import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 
 const DatasetContext = createContext(null);
 
 export function DatasetProvider({ children }) {
-  const [dataset, setDataset] = useState(defaultDataset);
+  const [activeDataset, setActiveDataset] = useState(() => {
+    // Initialize from localStorage if available
+    try {
+      const stored = sessionStorage.getItem('activeDataset');
+      return stored ? JSON.parse(stored) : null;
+    } catch (err) {
+      console.error('Failed to load dataset from storage:', err);
+      return null;
+    }
+  });
+
+  // Persist dataset to sessionStorage whenever it changes
+  useEffect(() => {
+    if (activeDataset) {
+      try {
+        sessionStorage.setItem('activeDataset', JSON.stringify(activeDataset));
+      } catch (err) {
+        console.error('Failed to save dataset to storage:', err);
+      }
+    } else {
+      sessionStorage.removeItem('activeDataset');
+    }
+  }, [activeDataset]);
 
   const value = useMemo(
     () => ({
-      dataset,
-      setDataset,
-      resetDataset: () => setDataset(defaultDataset),
+      activeDataset,
+      setActiveDataset,
+      resetDataset: () => setActiveDataset(null),
+      hasDataset: Boolean(activeDataset),
     }),
-    [dataset]
+    [activeDataset]
   );
 
   return <DatasetContext.Provider value={value}>{children}</DatasetContext.Provider>;
