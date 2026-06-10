@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { FiBriefcase } from 'react-icons/fi';
 
 const statusStyles = {
@@ -8,7 +9,7 @@ const statusStyles = {
 
 export default function ProjectCard({ project }) {
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+    <Link to={`/projects/${project.id}`} className="block rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{project.id}</p>
@@ -32,6 +33,6 @@ export default function ProjectCard({ project }) {
           </span>
         ))}
       </div>
-    </article>
+    </Link>
   );
 }

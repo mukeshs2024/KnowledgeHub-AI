@@ -1,4 +1,5 @@
-import { FiActivity, FiClock, FiDatabase, FiSearch, FiShield, FiTrendingUp } from 'react-icons/fi';
+import { useMemo, useState } from 'react';
+import { FiActivity, FiClock, FiDatabase, FiSearch, FiShield, FiTrendingUp, FiUsers, FiUserCheck, FiBriefcase } from 'react-icons/fi';
 import StatCard from '../components/StatCard.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
 
@@ -11,6 +12,8 @@ const accents = [
   'bg-rose-50 text-rose-600',
   'bg-cyan-50 text-cyan-600',
 ];
+
+const selectCls = 'focus-ring h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm shadow-sm';
 
 export default function Analytics() {
   const { dataset } = useDataset();

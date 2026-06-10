@@ -8,7 +8,7 @@ const links = [
   { to: '/members', label: 'Records', icon: FiFileText },
   { to: '/projects', label: 'Documents', icon: FiFileText },
   { to: '/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { to: '/settings', label: 'Settings', icon: FiSettings },
+  { to: '/feedback', label: 'Feedback', icon: FiMessageCircle },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {

@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom';
 import { FiUser } from 'react-icons/fi';
 
 export default function MemberCard({ member }) {
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+    <Link to={`/members/${member.id}`} className="block rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex gap-4">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
           <FiUser className="h-5 w-5" />
@@ -23,6 +24,6 @@ export default function MemberCard({ member }) {
           <dd className="text-right font-medium text-slate-800">{member.projectName}</dd>
         </div>
       </dl>
-    </article>
+    </Link>
   );
 }

@@ -37,6 +37,7 @@ export default function ChatWindow() {
     setIsTyping(true);
 
     window.setTimeout(() => {
+      const response = buildResponse(trimmed);
       setMessages((current) => [
         ...current,
         { id: Date.now() + 1, role: 'assistant', text: answerQuestion(dataset, trimmed) },

@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom';
 import { FiUsers } from 'react-icons/fi';
 
 export default function TeamCard({ team }) {
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+    <Link to={`/teams/${team.id}`} className="block rounded-2xl border border-slate-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{team.id}</p>
@@ -23,6 +24,6 @@ export default function TeamCard({ team }) {
           <p className="text-xl font-bold text-ink">{team.memberCount}</p>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }

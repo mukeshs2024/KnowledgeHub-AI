@@ -1,3 +1,10 @@
+const agentColors = {
+  'Team Agent':    'bg-brand-50 text-brand-700',
+  'Member Agent':  'bg-emerald-50 text-emerald-700',
+  'Project Agent': 'bg-amber-50 text-amber-700',
+  'RAG Agent':     'bg-purple-50 text-purple-700',
+};
+
 export default function ChatMessage({ message }) {
   const isUser = message.role === 'user';
 
