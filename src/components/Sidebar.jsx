@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { FiBarChart2, FiDatabase, FiFileText, FiHome, FiMessageSquare, FiSettings, FiX } from 'react-icons/fi';
+import { FiBarChart2, FiDatabase, FiFileText, FiHome, FiMessageCircle, FiMessageSquare, FiSettings, FiX } from 'react-icons/fi';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: FiHome },

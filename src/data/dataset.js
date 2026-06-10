@@ -396,4 +396,89 @@ export const defaultDataset = dataset_analysis_agent({
   fileType: 'CSV',
 });
 
+function splitTechStack(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeString(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+function buildProjectFromRow(row) {
+  const id = normalizeString(row.TeamID || row.teamId || row.TeamId);
+  return {
+    id,
+    name: normalizeString(row.ProjectName || row.projectName || row.Name || 'Unknown Project'),
+    domain: normalizeString(row.ProjectDomain || row.projectDomain || row.Domain || 'Unknown Domain'),
+    status: normalizeString(row.ProjectStatus || row.projectStatus || row.Status || 'Unknown'),
+    teamId: id,
+    teamName: normalizeString(row.TeamName || row.teamName || row.Name || ''),
+    problemStatement: normalizeString(row.ProblemStatement || row.problemStatement || row['Problem Statement']),
+    solution: normalizeString(row.Solution || row.solution),
+    techStack: splitTechStack(row.TechStack || row.techStack),
+  };
+}
+
+function buildMemberFromRow(row) {
+  return {
+    id: normalizeString(row.MemberID || row.memberId || row.MemberId),
+    name: normalizeString(row.MemberName || row.memberName || row.Name || 'Unknown Member'),
+    role: normalizeString(row.Role || row.role),
+    responsibilities: normalizeString(row.Responsibilities || row.responsibility),
+    teamId: normalizeString(row.TeamID || row.teamId || row.TeamId),
+    teamName: normalizeString(row.TeamName || row.teamName || row.Name || ''),
+    projectName: normalizeString(row.ProjectName || row.projectName),
+  };
+}
+
+function buildTeamFromRow(row) {
+  const id = normalizeString(row.TeamID || row.teamId || row.TeamId);
+  return {
+    id,
+    name: normalizeString(row.TeamName || row.teamName || row.Name || 'Unknown Team'),
+    domain: normalizeString(row.ProjectDomain || row.projectDomain || row.Domain || ''),
+    status: normalizeString(row.ProjectStatus || row.projectStatus || row.Status || ''),
+    projectCount: 0,
+    memberCount: 0,
+  };
+}
+
+const projectMap = new Map();
+const teamMap = new Map();
+const memberMap = new Map();
+
+defaultDataset.rows.forEach((row) => {
+  const teamId = normalizeString(row.TeamID || row.teamId || row.TeamId);
+  if (!teamId) return;
+
+  if (!projectMap.has(teamId)) {
+    projectMap.set(teamId, buildProjectFromRow(row));
+  }
+
+  if (!teamMap.has(teamId)) {
+    teamMap.set(teamId, buildTeamFromRow(row));
+  }
+
+  const team = teamMap.get(teamId);
+  if (team) {
+    team.memberCount += 1;
+  }
+
+  const memberId = normalizeString(row.MemberID || row.memberId || row.MemberId);
+  if (memberId && !memberMap.has(memberId)) {
+    memberMap.set(memberId, buildMemberFromRow(row));
+  }
+});
+
+for (const team of teamMap.values()) {
+  team.projectCount = 1;
+}
+
+export const projects = Array.from(projectMap.values());
+export const teams = Array.from(teamMap.values());
+export const members = Array.from(memberMap.values());
+
 export const suggestedQueries = defaultDataset.metadata.possibleQuestions;
