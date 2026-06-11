@@ -3,24 +3,45 @@ import { FiSend, FiTrash2 } from 'react-icons/fi';
 import ChatMessage from './ChatMessage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
-import { answerQuestion } from '../data/dataset.js';
-import { buildPrompt, callGemini } from '../lib/gemini.js';
+import { runCoordinator } from '../agents/coordinatorAgent.js';
+import { parseUploadedFile } from '../data/dataset.js';
+
+const DEFAULT_QUESTIONS = [
+  'Show all teams',
+  'List all members',
+  'Show all projects',
+  'How many completed projects?',
+  'Show project status distribution',
+];
 
 export default function ChatWindow() {
-  const { activeDataset } = useDataset();
-  const starterMessages = useMemo(
-    () =>
-      activeDataset
-        ? [
-            {
-              id: 1,
-              role: 'assistant',
-              text: `Hi, I analyzed ${activeDataset.fileName}. Ask about counts, averages, highest values, categories, or row-level detail from the uploaded dataset.`,
-            },
-          ]
-        : [],
-    [activeDataset]
-  );
+  const { activeDataset, setActiveDataset } = useDataset();
+  const [builtinDataset, setBuiltinDataset] = useState(null);
+
+  // Auto-load the built-in CSV so AI always has data
+  useEffect(() => {
+    if (activeDataset || builtinDataset) return;
+    import('../data/Rag_Project_Dataset.csv?raw')
+      .then(({ default: csvText }) => {
+        const file = new File([csvText], 'Rag_Project_Dataset.csv', { type: 'text/csv' });
+        return parseUploadedFile(file);
+      })
+      .then((ds) => setBuiltinDataset(ds))
+      .catch(() => {});
+  }, [activeDataset, builtinDataset]);
+
+  const dataset = activeDataset ?? builtinDataset;
+
+  const starterMessages = useMemo(() => [
+    {
+      id: 1,
+      role: 'assistant',
+      text: dataset
+        ? `Hi! I'm KnowledgeHub AI. I have full access to ${dataset.fileName} with ${dataset.rows.length} records.\n\nYou can ask me about teams, members, projects, analytics, or anything from the dataset.`
+        : `Hi! I'm KnowledgeHub AI. Loading dataset...`,
+    },
+  ], [dataset?.fileName, dataset?.rows?.length]);
+
   const [messages, setMessages] = useState(starterMessages);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -29,54 +50,28 @@ export default function ChatWindow() {
     setMessages(starterMessages);
   }, [starterMessages]);
 
-  const history = useMemo(() => messages.filter((message) => message.role === 'user'), [messages]);
+  const history = useMemo(() => messages.filter((m) => m.role === 'user'), [messages]);
 
   const submitMessage = (text) => {
     const trimmed = text.trim();
-    if (!trimmed || isTyping || !activeDataset) return;
+    if (!trimmed || isTyping) return;
+
+    if (!dataset) {
+      setMessages((cur) => [...cur, { id: Date.now(), role: 'user', text: trimmed }, { id: Date.now() + 1, role: 'assistant', text: 'Still loading the dataset, please try again in a moment.' }]);
+      return;
+    }
 
     const userMessage = { id: Date.now(), role: 'user', text: trimmed };
-    setMessages((current) => [...current, userMessage]);
+    setMessages((cur) => [...cur, userMessage]);
     setInput('');
     setIsTyping(true);
 
     (async () => {
       try {
-        // simple retrieval: score documents by token overlap
-        const qtokens = String(trimmed).toLowerCase().match(/[a-z0-9]+/g) ?? [];
-        const scored = activeDataset.documents
-          .map((doc) => {
-            const text = `${doc.text} ${Object.values(doc.metadata).join(' ')}`.toLowerCase();
-            const score = qtokens.reduce((s, t) => s + (text.includes(t) ? 1 : 0), 0);
-            return { doc, score };
-          })
-          .filter((d) => d.score > 0)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5)
-          .map((d) => d.doc);
-
-        const { prompt } = buildPrompt(activeDataset, trimmed, scored);
-        let llmText;
-        try {
-          llmText = await callGemini(prompt, { maxTokens: 512, temperature: 0.0 });
-        } catch (err) {
-          // Fall back to local heuristic responder
-          const response = answerQuestion(activeDataset, trimmed);
-          llmText = `${response.text}\n\nSource: ${response.sources ?? 'Dataset'}`;
-        }
-
-        setMessages((current) => [
-          ...current,
-          {
-            id: Date.now() + 1,
-            role: 'assistant',
-            text: llmText,
-            meta: {
-              agent: 'Gemini',
-              sources: scored.length ? `Retrieved ${scored.length} rows` : 'Dataset',
-              confidence: scored.length ? 'High' : 'Low',
-            },
-          },
+        const result = await runCoordinator(dataset, trimmed);
+        setMessages((cur) => [
+          ...cur,
+          { id: Date.now() + 1, role: 'assistant', text: result.text, meta: result.meta },
         ]);
       } finally {
         setIsTyping(false);
@@ -84,15 +79,10 @@ export default function ChatWindow() {
     })();
   };
 
-  if (!activeDataset) {
-    return (
-      <div className="rounded-2xl border border-slate-100 bg-white p-10 shadow-soft">
-        <h1 className="text-2xl font-bold text-ink">Ask AI</h1>
-        <p className="mt-3 text-sm text-slate-500">Upload a dataset to start asking questions.</p>
-        <p className="mt-4 text-sm text-slate-600">Supported formats: CSV, XLSX, JSON.</p>
-      </div>
-    );
-  }
+  const suggestedQuestions = dataset?.metadata?.possibleQuestions ?? DEFAULT_QUESTIONS;
+  const subtitle = dataset
+    ? `Agentic RAG over ${dataset.rows.length.toLocaleString()} records · ${dataset.fileName}`
+    : 'Loading KnowledgeHub dataset...';
 
   return (
     <div className="grid min-h-[680px] gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -129,7 +119,7 @@ export default function ChatWindow() {
       <section className="flex min-h-[680px] flex-col rounded-2xl border border-slate-100 bg-slate-50 shadow-soft">
         <div className="border-b border-slate-200 bg-white px-5 py-4">
           <h1 className="text-xl font-bold text-ink">Ask AI</h1>
-          <p className="mt-1 text-sm text-slate-500">Schema-aware retrieval over {activeDataset.rows.length.toLocaleString()} records from {activeDataset.fileName}.</p>
+          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
@@ -146,7 +136,7 @@ export default function ChatWindow() {
 
         <div className="border-t border-slate-200 bg-white p-4">
           <div className="mb-3 flex flex-wrap gap-2">
-            {activeDataset.metadata.possibleQuestions.map((query) => (
+            {suggestedQuestions.map((query) => (
               <button
                 key={query}
                 type="button"
@@ -158,16 +148,13 @@ export default function ChatWindow() {
             ))}
           </div>
           <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitMessage(input);
-            }}
+            onSubmit={(e) => { e.preventDefault(); submitMessage(input); }}
             className="flex gap-3"
           >
             <input
               value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask anything about the uploaded dataset"
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything about teams, members, projects..."
               className="focus-ring h-12 min-w-0 flex-1 rounded-xl border border-slate-200 px-4 text-sm shadow-sm"
             />
             <button

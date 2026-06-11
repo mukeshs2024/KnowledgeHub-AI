@@ -1,199 +1,167 @@
-import { useMemo, useState } from 'react';
-import { FiDatabase, FiFile, FiRefreshCw, FiUploadCloud } from 'react-icons/fi';
-import SearchBar from '../components/SearchBar.jsx';
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  FiBriefcase, FiCheckCircle, FiFile, FiLayers,
+  FiMessageSquare, FiRefreshCw, FiUploadCloud,
+  FiUserCheck, FiUsers, FiBarChart2,
+} from 'react-icons/fi';
 import StatCard from '../components/StatCard.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
-import { parseUploadedFile, deriveDatasetEntities } from '../data/dataset.js';
+import { deriveDatasetEntities, parseUploadedFile } from '../data/dataset.js';
+
+const quickLinks = [
+  { to: '/ask-ai',    label: 'Ask AI',    icon: FiMessageSquare, accent: 'bg-brand-50 text-brand-700 border-brand-100' },
+  { to: '/teams',     label: 'Teams',     icon: FiUsers,         accent: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { to: '/members',   label: 'Members',   icon: FiUserCheck,     accent: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { to: '/projects',  label: 'Projects',  icon: FiBriefcase,     accent: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+  { to: '/analytics', label: 'Analytics', icon: FiBarChart2,     accent: 'bg-purple-50 text-purple-700 border-purple-100' },
+];
 
 export default function Dashboard() {
   const { activeDataset, setActiveDataset, resetDataset } = useDataset();
-  const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const visibleColumns = useMemo(() => {
-    if (!activeDataset) return [];
-    return activeDataset.columns.filter((column) => column.label.toLowerCase().includes(query.toLowerCase()));
-  }, [activeDataset, query]);
-
-  const handleUpload = async (event) => {
-    const file = event.target.files?.[0];
+  const handleUpload = async (file) => {
     if (!file) return;
-
     setError('');
     setIsLoading(true);
     try {
       setActiveDataset(await parseUploadedFile(file));
-    } catch (uploadError) {
-      setError(uploadError.message || 'Dataset upload failed.');
+    } catch (err) {
+      setError(err.message || 'Dataset upload failed.');
     } finally {
       setIsLoading(false);
-      event.target.value = '';
     }
   };
 
+  const onFileInput = (e) => { handleUpload(e.target.files?.[0]); e.target.value = ''; };
+  const onDrop = (e) => { e.preventDefault(); setDragOver(false); handleUpload(e.dataTransfer.files?.[0]); };
+
+  const entities = activeDataset ? deriveDatasetEntities(activeDataset) : null;
+  const completed = entities?.projects.filter((p) => /complete|done/i.test(p.status)).length ?? 0;
+  const ongoing = entities ? entities.projects.length - completed : 0;
+
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl bg-ink p-6 text-white shadow-soft sm:p-8">
-        <div className="max-w-3xl">
-          <p className="text-sm font-semibold text-blue-200">KnowledgeHub AI</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Team & project intelligence for every uploaded dataset.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-            Upload a CSV, XLSX, or JSON file to explore teams, members, projects, and ask AI questions.
-          </p>
-        </div>
-      </section>
+    <div className="space-y-5">
 
+      {/* Upload Card */}
       <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink">Upload Dataset</h2>
-            <p className="mt-1 text-sm text-slate-500">Supported formats: CSV, XLSX, and JSON.</p>
+            <h2 className="text-base font-bold text-ink">Upload Dataset</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Supported: CSV, XLSX, JSON</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="focus-ring inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700">
-              <FiUploadCloud />
-              {isLoading ? 'Analyzing...' : 'Choose file'}
-              <input type="file" accept=".csv,.xlsx,.json" onChange={handleUpload} className="sr-only" />
+          <div className="flex gap-3">
+            <label className="focus-ring inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700">
+              <FiUploadCloud className="h-4 w-4" />
+              {isLoading ? 'Analyzing…' : 'Choose File'}
+              <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.json" onChange={onFileInput} className="sr-only" />
             </label>
-            <button
-              type="button"
-              onClick={resetDataset}
-              className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              <FiRefreshCw />
-              Clear dataset
-            </button>
+            {activeDataset && (
+              <button
+                type="button"
+                onClick={resetDataset}
+                className="focus-ring inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                <FiRefreshCw className="h-4 w-4" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
-        {error ? <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+        {error && <p className="mt-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
 
         {!activeDataset ? (
-          <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900">No Dataset Uploaded</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Upload a dataset to begin analysis, schema detection, document generation, and AI retrieval.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {['CSV', 'XLSX', 'JSON'].map((format) => (
-                <div key={format} className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm font-semibold text-slate-700">
-                  {format}
-                </div>
-              ))}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`mt-4 flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 transition ${
+              dragOver ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-slate-50 hover:border-brand-300 hover:bg-brand-50'
+            }`}
+          >
+            <FiUploadCloud className={`h-8 w-8 ${dragOver ? 'text-brand-600' : 'text-slate-400'}`} />
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-700">Drop your file here or click to browse</p>
+              <p className="mt-1 text-xs text-slate-400">CSV · XLSX · JSON</p>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <FiFile className="h-5 w-5 shrink-0 text-emerald-600" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-emerald-800">{activeDataset.fileName}</p>
+              <p className="text-xs text-emerald-600">{activeDataset.rows.length} rows · {activeDataset.columns.length} columns</p>
+            </div>
+          </div>
+        )}
       </section>
 
-      {activeDataset ? (
-        <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard icon={FiFile} label="Dataset" value={activeDataset.fileName} detail="Active knowledge source" />
-            <StatCard icon={FiDatabase} label="File Type" value={activeDataset.fileType} detail={activeDataset.metadata.datasetCategory} accent="bg-emerald-50 text-emerald-600" />
-            {(() => {
-              const { teams, members, projects } = deriveDatasetEntities(activeDataset);
-              const completed = projects.filter((p) => /complete|completed|done/i.test(p.status)).length;
-              const ongoing = projects.length - completed;
-              return (
-                <>
-                  <StatCard label="Teams" value={teams.length.toLocaleString()} detail="Detected teams" accent="bg-amber-50 text-amber-600" />
-                  <StatCard label="Members" value={members.length.toLocaleString()} detail="Detected members" accent="bg-indigo-50 text-indigo-600" />
-                </>
-              );
-            })()}
-          </section>
+      {/* Stat Cards — shown only when dataset is loaded */}
+      {entities && (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <StatCard icon={FiUsers} label="Total Teams" value={entities.teams.length} detail="Detected in dataset" />
+          <StatCard icon={FiUserCheck} label="Total Members" value={entities.members.length} detail="Active contributors" accent="bg-emerald-50 text-emerald-600" />
+          <StatCard icon={FiBriefcase} label="Total Projects" value={entities.projects.length} detail="Tracked initiatives" accent="bg-amber-50 text-amber-600" />
+          <StatCard icon={FiCheckCircle} label="Completed" value={completed} detail="Delivered successfully" accent="bg-teal-50 text-teal-600" />
+          <StatCard icon={FiLayers} label="Ongoing" value={ongoing} detail="Currently in progress" accent="bg-indigo-50 text-indigo-600" />
+        </section>
+      )}
 
-          <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
-              <h2 className="text-lg font-bold text-ink">Dataset Overview</h2>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                  {(() => {
-                    const { teams, members, projects } = deriveDatasetEntities(activeDataset);
-                    const completed = projects.filter((p) => /complete|completed|done/i.test(p.status)).length;
-                    const ongoing = projects.length - completed;
-                    const domains = [...new Set(projects.map((p) => p.domain).filter(Boolean))];
-                    return (
-                      <>
-                        <InfoBlock label="Dataset Category" value={activeDataset.metadata.datasetCategory} />
-                        <InfoBlock label="Upload Time" value={formatDateTime(activeDataset.uploadedAt)} />
-                        <InfoBlock label="Total Teams" value={teams.length} />
-                        <InfoBlock label="Total Members" value={members.length} />
-                        <InfoBlock label="Total Projects" value={projects.length} />
-                        <InfoBlock label="Completed Projects" value={completed} />
-                        <InfoBlock label="Ongoing Projects" value={ongoing} />
-                        <InfoBlock label="Detected Domains" value={domains.slice(0, 5).join(', ') || 'N/A'} />
-                      </>
-                    );
-                  })()}
+      {/* Dataset Info — shown when loaded */}
+      {activeDataset && (
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
+          <h2 className="mb-4 text-base font-bold text-ink">Dataset Overview</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'File', value: activeDataset.fileName },
+              { label: 'Type', value: activeDataset.fileType },
+              { label: 'Category', value: activeDataset.metadata?.datasetCategory ?? '—' },
+              { label: 'Status', value: activeDataset.status ?? 'Ready' },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                <p className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</p>
               </div>
-            </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
-              <h2 className="text-lg font-bold text-ink">Detected Intelligence</h2>
-              <div className="mt-4 space-y-4 text-sm text-slate-600">
-                <InfoBlock label="Dataset Type" value={activeDataset.metadata.datasetType} />
-                <InfoBlock label="Inferred Entities" value={activeDataset.metadata.entities.join(', ')} />
-                <InfoBlock label="Analysis Pipeline" value={activeDataset.metadata.agents.join(' → ')} />
-              </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </section>
+      )}
 
-          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-ink">Detected Schema</h2>
-                <p className="mt-1 text-sm text-slate-500">Field names, inferred data types, missing values, and sample values.</p>
-              </div>
-              <div className="max-w-md flex-1">
-                <SearchBar value={query} onChange={setQuery} placeholder="Search detected fields" />
-              </div>
-            </div>
-            <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
-              <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Field</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Missing</th>
-                    <th className="px-4 py-3">Unique</th>
-                    <th className="px-4 py-3">Samples</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {visibleColumns.map((column) => (
-                    <tr key={column.name}>
-                      <td className="px-4 py-3 font-semibold text-slate-800">{column.label}</td>
-                      <td className="px-4 py-3 capitalize text-slate-600">{column.type}</td>
-                      <td className="px-4 py-3 text-slate-600">{column.missingCount}</td>
-                      <td className="px-4 py-3 text-slate-600">{column.uniqueCount}</td>
-                      <td className="px-4 py-3 text-slate-500">{column.sampleValues.join(', ') || 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      ) : null}
+      {/* No dataset placeholder */}
+      {!activeDataset && (
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
+          <h2 className="mb-3 text-base font-bold text-ink">Getting Started</h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {['1. Upload a CSV, XLSX, or JSON dataset', '2. Explore Teams, Members, and Projects', '3. Ask AI questions about your data'].map((step) => (
+              <div key={step} className="rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-700">{step}</div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Quick Navigation Bar */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-soft">
+        <h2 className="mb-4 text-base font-bold text-ink">Quick Navigation</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {quickLinks.map(({ to, label, icon: Icon, accent }) => (
+            <Link
+              key={to}
+              to={to}
+              className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-md ${accent}`}
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </Link>
+          ))}
+        </div>
+      </section>
+
     </div>
   );
-}
-
-function InfoBlock({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 font-medium text-slate-800">{value}</p>
-    </div>
-  );
-}
-
-function formatDateTime(value) {
-  if (!value) return 'Unknown';
-  return new Date(value).toLocaleString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
