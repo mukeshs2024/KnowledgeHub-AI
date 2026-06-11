@@ -399,9 +399,40 @@ function retrieveDocuments(dataset, query, limit = 5) {
     .slice(0, limit);
 }
 
+function normalizeDatasetValue(value) {
+  return String(value ?? '').trim().toUpperCase();
+}
+
+export function findExactRowMatches(dataset, question) {
+  const teamIdMatch = question.match(/team\s*id\s*(?:is|=|:)?\s*(t0*\d+)/i);
+  if (teamIdMatch) {
+    const teamId = teamIdMatch[1].toUpperCase();
+    return dataset.rows.filter((row) => normalizeDatasetValue(row.TeamID || row.teamId || row.TeamId) === teamId);
+  }
+
+  const memberIdMatch = question.match(/member\s*id\s*(?:is|=|:)?\s*(m0*\d+)/i);
+  if (memberIdMatch) {
+    const memberId = memberIdMatch[1].toUpperCase();
+    return dataset.rows.filter((row) => normalizeDatasetValue(row.MemberID || row.memberId || row.MemberId) === memberId);
+  }
+
+  return [];
+}
+
 export function answerQuestion(dataset, question) {
   const normalized = question.toLowerCase();
   const numericColumn = findBestColumn(dataset.columns, question, 'number') ?? dataset.columns.find((column) => column.type === 'number');
+  const exactRowMatches = findExactRowMatches(dataset, question);
+
+  if (exactRowMatches.length) {
+    return {
+      text: `I found ${exactRowMatches.length} relevant record${exactRowMatches.length > 1 ? 's' : ''}:
+${exactRowMatches.map((row, index) => `${index + 1}. ${formatRow(row, dataset.columns)}`).join('\n')}`,
+      agent: 'Gemini Response Agent',
+      sources: `Retrieved ${exactRowMatches.length} records`,
+      confidence: 'High',
+    };
+  }
 
   // Answer questions about specific team
   if (/team|teams/i.test(question)) {

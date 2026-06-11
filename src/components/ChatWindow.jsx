@@ -3,8 +3,8 @@ import { FiSend, FiTrash2 } from 'react-icons/fi';
 import ChatMessage from './ChatMessage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
-import { answerQuestion } from '../data/dataset.js';
-import { buildPrompt, callGemini } from '../lib/gemini.js';
+import { agenticAISystem } from '../lib/agenticAISystem.js';
+import ResponseFormatter from '../lib/responseFormatter.js';
 
 export default function ChatWindow() {
   const { activeDataset } = useDataset();
@@ -42,39 +42,45 @@ export default function ChatWindow() {
 
     (async () => {
       try {
-        // simple retrieval: score documents by token overlap
-        const qtokens = String(trimmed).toLowerCase().match(/[a-z0-9]+/g) ?? [];
-        const scored = activeDataset.documents
-          .map((doc) => {
-            const text = `${doc.text} ${Object.values(doc.metadata).join(' ')}`.toLowerCase();
-            const score = qtokens.reduce((s, t) => s + (text.includes(t) ? 1 : 0), 0);
-            return { doc, score };
-          })
-          .filter((d) => d.score > 0)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5)
-          .map((d) => d.doc);
+        // Use Agentic AI System for intelligent query processing
+        const response = await agenticAISystem.query(trimmed);
 
-        const { prompt } = buildPrompt(activeDataset, trimmed, scored);
-        let llmText;
-        try {
-          llmText = await callGemini(prompt, { maxTokens: 512, temperature: 0.0 });
-        } catch (err) {
-          // Fall back to local heuristic responder
-          const response = answerQuestion(activeDataset, trimmed);
-          llmText = `${response.text}\n\nSource: ${response.sources ?? 'Dataset'}`;
-        }
+        // Format response with metadata
+        const formattedResponse = ResponseFormatter.formatAgentResponse(
+          response,
+          response.sources || [],
+          response.agentUsed
+        );
+
+        const assistantMessage = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          text: formattedResponse.answer || formattedResponse.error || 'Unable to process query',
+          meta: {
+            agent: formattedResponse.agentUsed,
+            confidence: formattedResponse.confidencePercentage,
+            sources: formattedResponse.sourceCount,
+            coordinator: formattedResponse.coordinatorReasoning,
+            workflow: formattedResponse.workflow,
+            usedGemini: formattedResponse.metadata.usedGemini,
+            reasoning: formattedResponse.reasoning,
+          },
+        };
+
+        setMessages((current) => [...current, assistantMessage]);
+      } catch (err) {
+        const errorResponse = ResponseFormatter.formatErrorResponse(err, trimmed);
 
         setMessages((current) => [
           ...current,
           {
             id: Date.now() + 1,
             role: 'assistant',
-            text: llmText,
+            text: errorResponse.answer,
             meta: {
-              agent: 'Gemini',
-              sources: scored.length ? `Retrieved ${scored.length} rows` : 'Dataset',
-              confidence: scored.length ? 'High' : 'Low',
+              agent: errorResponse.agentUsed,
+              confidence: '0%',
+              error: true,
             },
           },
         ]);

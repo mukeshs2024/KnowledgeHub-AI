@@ -4,12 +4,18 @@ import SearchBar from '../components/SearchBar.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useDataset } from '../data/DatasetContext.jsx';
 import { parseUploadedFile, deriveDatasetEntities } from '../data/dataset.js';
+import { agenticAISystem } from '../lib/agenticAISystem.js';
 
 export default function Dashboard() {
   const { activeDataset, setActiveDataset, resetDataset } = useDataset();
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleClearDataset = () => {
+    resetDataset();
+    agenticAISystem.reset();
+  };
 
   const visibleColumns = useMemo(() => {
     if (!activeDataset) return [];
@@ -23,7 +29,18 @@ export default function Dashboard() {
     setError('');
     setIsLoading(true);
     try {
-      setActiveDataset(await parseUploadedFile(file));
+      // Parse dataset with existing system
+      const dataset = await parseUploadedFile(file);
+      setActiveDataset(dataset);
+
+      // Initialize Agentic AI System in parallel
+      const fileContent = await file.text();
+      const fileType = file.name.split('.').pop()?.toUpperCase() || 'CSV';
+      
+      agenticAISystem.processDataset(fileContent, file.name, fileType).catch(err => {
+        console.warn('Agentic AI System initialization failed:', err);
+        // System will still work with basic retrieval
+      });
     } catch (uploadError) {
       setError(uploadError.message || 'Dataset upload failed.');
     } finally {
@@ -58,7 +75,7 @@ export default function Dashboard() {
             </label>
             <button
               type="button"
-              onClick={resetDataset}
+              onClick={handleClearDataset}
               className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               <FiRefreshCw />
